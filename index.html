@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ticket Logs Dashboard</title>
+    <!-- Tailwind CSS para diseño rápido sin descargar nada -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-gray-900 text-white p-8">
+    <div class="max-w-6xl mx-auto">
+        <h1 class="text-3xl font-bold mb-6 border-b border-gray-700 pb-4">📋 Panel de Logs de Tickets</h1>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Lista de Tickets -->
+            <div class="bg-gray-800 p-4 rounded-lg shadow h-[600px] overflow-y-auto">
+                <h2 class="text-xl font-semibold mb-4 text-blue-400">Tickets Recientes</h2>
+                <ul id="lista-tickets" class="space-y-2">
+                    <li class="text-gray-400">Cargando tickets...</li>
+                </ul>
+            </div>
+            
+            <!-- Visor del Ticket Seleccionado -->
+            <div class="md:col-span-2 bg-gray-800 p-6 rounded-lg shadow h-[600px] flex flex-col">
+                <h2 class="text-xl font-semibold mb-4 text-green-400" id="ticket-titulo">Selecciona un ticket</h2>
+                <div id="ticket-contenido" class="bg-gray-950 p-4 rounded border border-gray-700 flex-1 overflow-y-auto font-mono text-sm space-y-2">
+                    <!-- Aquí se mostrarán los mensajes -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const USER = 'TU_USUARIO_DE_GITHUB';
+        const REPO = 'TU_REPOSITORIO_DASHBOARD';
+
+        // 1. Obtener la lista de archivos de la carpeta /logs
+        async function cargarTickets() {
+            try {
+                const response = await fetch(`https://api.github.com/repos/${USER}/${REPO}/contents/logs`);
+                const archivos = await response.json();
+                const listaHTML = document.getElementById('lista-tickets');
+                listaHTML.innerHTML = '';
+
+                if(!Array.isArray(archivos)) {
+                    listaHTML.innerHTML = '<li class="text-red-400">No se encontraron logs.</li>';
+                    return;
+                }
+
+                archivos.reverse().forEach(file => {
+                    if(file.name.endsWith('.json')) {
+                        const nombreLimpio = file.name.replace('.json', '').replace('ticket-', '#');
+                        const li = document.createElement('li');
+                        li.innerHTML = `
+                            <button onclick="verTicket('${file.download_url}', '${nombreLimpio}')" class="w-full text-left p-3 bg-gray-700 hover:bg-blue-600 rounded transition font-medium">
+                                🎫 Ticket ${nombreLimpio}
+                            </button>
+                        `;
+                        listaHTML.appendChild(li);
+                    }
+                });
+            } catch (error) {
+                console.error("Error cargando el índice de logs:", error);
+            }
+        }
+
+        // 2. Leer el JSON del ticket seleccionado y mostrarlo
+        async function verTicket(url, nombre) {
+            document.getElementById('ticket-titulo').innerText = `Visualizando: Ticket ${nombre}`;
+            const contenedor = document.getElementById('ticket-contenido');
+            contenedor.innerHTML = 'Cargando contenido...';
+
+            try {
+                const response = await fetch(url);
+                const datos = await response.json(); // Esperamos una estructura: [{usuario: "X", mensaje: "Y"}, ...]
+                
+                contenedor.innerHTML = '';
+                datos.forEach(msg => {
+                    const div = document.createElement('div');
+                    div.className = "pb-2 border-b border-gray-800";
+                    div.innerHTML = `<span class="text-blue-300 font-bold">${msg.usuario}:</span> <span class="text-gray-300">${msg.mensaje}</span>`;
+                    contenedor.appendChild(div);
+                });
+            } catch (error) {
+                contenedor.innerHTML = '<span class="text-red-400">Error al cargar el detalle del ticket.</span>';
+            }
+        }
+
+        window.onload = cargarTickets;
+    </script>
+</body>
+</html>
